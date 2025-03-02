@@ -9,10 +9,22 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { serviceFormSchema, type InsertService } from "@shared/schema";
 import { Textarea } from "@/components/ui/textarea";
 import { useState } from "react";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
+import { useLoadScript, Autocomplete } from "@react-google-maps/api";
+
+const libraries = ["places"];
 
 export default function HomePage() {
   const { toast } = useToast();
   const [precioEstimado, setPrecioEstimado] = useState<number | null>(null);
+  const [distancia, setDistancia] = useState<number | null>(null);
+  const [showConfirmDialog, setShowConfirmDialog] = useState(false);
+  const [formData, setFormData] = useState<InsertService | null>(null);
+
+  const { isLoaded } = useLoadScript({
+    googleMapsApiKey: import.meta.env.VITE_GOOGLE_MAPS_API_KEY || "",
+    libraries: libraries as any,
+  });
 
   const form = useForm<InsertService>({
     resolver: zodResolver(serviceFormSchema),
@@ -32,23 +44,69 @@ export default function HomePage() {
     },
   });
 
-  const calcularPrecio = (tipoServicio: string): number => {
+  const calcularPrecioBase = (tipoServicio: string): number => {
     const precios = {
-      moto_cadete: 5000,
-      utilitario_paqueteria: 10000,
-      pickup_flete: 20000,
+      moto_cadete: 5000, // Precio base cada 2km
+      utilitario_paqueteria: 10000, // Precio base hasta 10km
+      pickup_flete: 20000, // Precio base cada 10km
     };
     return precios[tipoServicio as keyof typeof precios] || 0;
   };
 
-  const onSubmit = async (data: InsertService) => {
-    try {
-      // Convertir el precio estimado a string antes de enviar
-      const formData = {
-        ...data,
-        precioEstimado: precioEstimado?.toString() || "0",
-      };
+  const calcularPrecioFinal = async (direccionCarga: string, direccionEntrega: string, tipoServicio: string) => {
+    if (!isLoaded) return;
 
+    const service = new google.maps.DistanceMatrixService();
+
+    try {
+      const result = await service.getDistanceMatrix({
+        origins: [direccionCarga],
+        destinations: [direccionEntrega],
+        travelMode: google.maps.TravelMode.DRIVING,
+        unitSystem: google.maps.UnitSystem.METRIC,
+      });
+
+      if (result.rows[0]?.elements[0]?.distance) {
+        const distanciaKm = result.rows[0].elements[0].distance.value / 1000;
+        setDistancia(distanciaKm);
+
+        const precioBase = calcularPrecioBase(tipoServicio);
+        let precioFinal = precioBase;
+
+        switch (tipoServicio) {
+          case "moto_cadete":
+            precioFinal = precioBase * Math.ceil(distanciaKm / 2);
+            break;
+          case "utilitario_paqueteria":
+            precioFinal = distanciaKm <= 10 ? precioBase : precioBase * Math.ceil(distanciaKm / 10);
+            break;
+          case "pickup_flete":
+            precioFinal = precioBase * Math.ceil(distanciaKm / 10);
+            break;
+        }
+
+        setPrecioEstimado(precioFinal);
+        form.setValue("precioEstimado", precioFinal.toString());
+      }
+    } catch (error) {
+      console.error("Error calculando distancia:", error);
+      toast({
+        title: "Error",
+        description: "No se pudo calcular la distancia entre las direcciones.",
+        variant: "destructive",
+      });
+    }
+  };
+
+  const handleSubmit = async (data: InsertService) => {
+    setFormData(data);
+    setShowConfirmDialog(true);
+  };
+
+  const confirmarEnvio = async () => {
+    if (!formData) return;
+
+    try {
       const response = await fetch("/api/services", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -61,6 +119,11 @@ export default function HomePage() {
         title: "¡Solicitud enviada!",
         description: "Pronto nos pondremos en contacto contigo.",
       });
+
+      setShowConfirmDialog(false);
+      form.reset();
+      setPrecioEstimado(null);
+      setDistancia(null);
     } catch (error) {
       toast({
         title: "Error",
@@ -70,22 +133,28 @@ export default function HomePage() {
     }
   };
 
+  if (!isLoaded) return <div>Cargando...</div>;
+
   return (
     <div className="container mx-auto px-4 py-8">
       <Card className="p-6 bg-card">
         <h1 className="text-3xl font-bold mb-6 text-center">Solicitud de Servicio de Transporte</h1>
 
         <Form {...form}>
-          <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
+          <form onSubmit={form.handleSubmit(handleSubmit)} className="space-y-6">
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div className="space-y-2">
                 <label className="text-sm font-medium">Tipo de Servicio</label>
                 <Select
                   onValueChange={(value) => {
                     form.setValue("tipoServicio", value);
-                    const precio = calcularPrecio(value);
-                    setPrecioEstimado(precio);
-                    form.setValue("precioEstimado", precio.toString());
+                    if (form.getValues("direccionCarga") && form.getValues("direccionEntrega")) {
+                      calcularPrecioFinal(
+                        form.getValues("direccionCarga"),
+                        form.getValues("direccionEntrega"),
+                        value
+                      );
+                    }
                   }}
                   defaultValue="moto_cadete"
                 >
@@ -93,9 +162,9 @@ export default function HomePage() {
                     <SelectValue placeholder="Seleccione el tipo de servicio" />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="moto_cadete">Moto Cadete ($5,000)</SelectItem>
-                    <SelectItem value="utilitario_paqueteria">Utilitario Paquetería ($10,000)</SelectItem>
-                    <SelectItem value="pickup_flete">Pick Up Flete ($20,000)</SelectItem>
+                    <SelectItem value="moto_cadete">Moto Cadete (desde $5,000 cada 2km)</SelectItem>
+                    <SelectItem value="utilitario_paqueteria">Utilitario Paquetería (desde $10,000 hasta 10km)</SelectItem>
+                    <SelectItem value="pickup_flete">Pick Up Flete (desde $20,000 cada 10km)</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
@@ -117,12 +186,60 @@ export default function HomePage() {
 
               <div className="space-y-2">
                 <label className="text-sm font-medium">Dirección de Carga</label>
-                <Input {...form.register("direccionCarga")} placeholder="¿Dónde recogemos?" />
+                <Autocomplete
+                  onLoad={(autocomplete) => {
+                    autocomplete.addListener("place_changed", () => {
+                      const place = autocomplete.getPlace();
+                      if (place.geometry?.location) {
+                        form.setValue("latitudCarga", place.geometry.location.lat().toString());
+                        form.setValue("longitudCarga", place.geometry.location.lng().toString());
+                        form.setValue("direccionCarga", place.formatted_address || "");
+
+                        if (form.getValues("direccionEntrega")) {
+                          calcularPrecioFinal(
+                            place.formatted_address || "",
+                            form.getValues("direccionEntrega"),
+                            form.getValues("tipoServicio")
+                          );
+                        }
+                      }
+                    });
+                  }}
+                >
+                  <Input
+                    {...form.register("direccionCarga")}
+                    placeholder="¿Dónde recogemos?"
+                  />
+                </Autocomplete>
               </div>
 
               <div className="space-y-2">
                 <label className="text-sm font-medium">Dirección de Entrega</label>
-                <Input {...form.register("direccionEntrega")} placeholder="¿Dónde entregamos?" />
+                <Autocomplete
+                  onLoad={(autocomplete) => {
+                    autocomplete.addListener("place_changed", () => {
+                      const place = autocomplete.getPlace();
+                      if (place.geometry?.location) {
+                        form.setValue("latitudEntrega", place.geometry.location.lat().toString());
+                        form.setValue("longitudEntrega", place.geometry.location.lng().toString());
+                        form.setValue("direccionEntrega", place.formatted_address || "");
+
+                        if (form.getValues("direccionCarga")) {
+                          calcularPrecioFinal(
+                            form.getValues("direccionCarga"),
+                            place.formatted_address || "",
+                            form.getValues("tipoServicio")
+                          );
+                        }
+                      }
+                    });
+                  }}
+                >
+                  <Input
+                    {...form.register("direccionEntrega")}
+                    placeholder="¿Dónde entregamos?"
+                  />
+                </Autocomplete>
               </div>
             </div>
 
@@ -134,9 +251,12 @@ export default function HomePage() {
               />
             </div>
 
-            {precioEstimado && (
-              <div className="bg-primary/10 p-4 rounded-lg text-center">
-                <p className="text-lg font-semibold">Precio Estimado: ${precioEstimado.toLocaleString()}</p>
+            {distancia && precioEstimado && (
+              <div className="bg-primary/10 p-4 rounded-lg space-y-2">
+                <p className="text-center">Distancia aproximada: {distancia.toFixed(1)} km</p>
+                <p className="text-lg font-semibold text-center">
+                  Precio Estimado: ${precioEstimado.toLocaleString()}
+                </p>
               </div>
             )}
 
@@ -146,6 +266,31 @@ export default function HomePage() {
           </form>
         </Form>
       </Card>
+
+      <Dialog open={showConfirmDialog} onOpenChange={setShowConfirmDialog}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Confirmar Solicitud de Servicio</DialogTitle>
+            <DialogDescription>
+              ¿Deseas proceder con la solicitud del servicio?
+              {distancia && precioEstimado && (
+                <div className="mt-4">
+                  <p>Distancia: {distancia.toFixed(1)} km</p>
+                  <p className="font-semibold">Precio Estimado: ${precioEstimado.toLocaleString()}</p>
+                </div>
+              )}
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setShowConfirmDialog(false)}>
+              Cancelar
+            </Button>
+            <Button onClick={confirmarEnvio}>
+              Confirmar
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
