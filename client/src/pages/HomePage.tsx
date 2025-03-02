@@ -136,14 +136,22 @@ export default function HomePage() {
     return (
       <div className="container mx-auto px-4 py-8">
         <Card className="p-6 bg-card">
-          <div className="text-center text-red-500">
-            <h2 className="text-xl font-bold mb-2">Error al cargar Google Maps</h2>
-            <p>Por favor, verifica que la API key sea correcta y que los servicios necesarios estén habilitados en la Google Cloud Console:</p>
-            <ul className="list-disc list-inside mt-2">
-              <li>Maps JavaScript API</li>
-              <li>Places API</li>
-              <li>Distance Matrix API</li>
-            </ul>
+          <div className="text-center text-destructive">
+            <h2 className="text-xl font-bold mb-4">Error de Configuración</h2>
+            <p className="mb-4">Lo sentimos, hay un problema con el servicio de mapas.</p>
+            <div className="bg-muted p-4 rounded-lg text-left">
+              <p className="font-medium mb-2">Para solucionar este error, necesitamos:</p>
+              <ul className="list-disc list-inside space-y-1">
+                <li>Verificar la API key de Google Maps</li>
+                <li>Habilitar los siguientes servicios en Google Cloud Console:
+                  <ul className="list-disc list-inside ml-4 mt-1">
+                    <li>Maps JavaScript API</li>
+                    <li>Places API</li>
+                    <li>Distance Matrix API</li>
+                  </ul>
+                </li>
+              </ul>
+            </div>
           </div>
         </Card>
       </div>
@@ -155,7 +163,7 @@ export default function HomePage() {
       <div className="container mx-auto px-4 py-8">
         <Card className="p-6 bg-card">
           <div className="text-center">
-            <p className="text-lg">Cargando Google Maps...</p>
+            <p className="text-lg">Cargando servicios de mapas...</p>
           </div>
         </Card>
       </div>
@@ -213,60 +221,66 @@ export default function HomePage() {
 
               <div className="space-y-2">
                 <label className="text-sm font-medium">Dirección de Carga</label>
-                <Autocomplete
-                  onLoad={(autocomplete) => {
-                    autocomplete.addListener("place_changed", () => {
-                      const place = autocomplete.getPlace();
-                      if (place.geometry?.location) {
-                        form.setValue("latitudCarga", place.geometry.location.lat().toString());
-                        form.setValue("longitudCarga", place.geometry.location.lng().toString());
-                        form.setValue("direccionCarga", place.formatted_address || "");
+                <div className="relative">
+                  <Autocomplete
+                    onLoad={(autocomplete) => {
+                      autocomplete.addListener("place_changed", () => {
+                        const place = autocomplete.getPlace();
+                        if (place.geometry?.location) {
+                          form.setValue("latitudCarga", place.geometry.location.lat().toString());
+                          form.setValue("longitudCarga", place.geometry.location.lng().toString());
+                          form.setValue("direccionCarga", place.formatted_address || "");
 
-                        if (form.getValues("direccionEntrega")) {
-                          calcularPrecioFinal(
-                            place.formatted_address || "",
-                            form.getValues("direccionEntrega"),
-                            form.getValues("tipoServicio")
-                          );
+                          if (form.getValues("direccionEntrega")) {
+                            calcularPrecioFinal(
+                              place.formatted_address || "",
+                              form.getValues("direccionEntrega"),
+                              form.getValues("tipoServicio")
+                            );
+                          }
                         }
-                      }
-                    });
-                  }}
-                >
-                  <Input
-                    {...form.register("direccionCarga")}
-                    placeholder="¿Dónde recogemos?"
-                  />
-                </Autocomplete>
+                      });
+                    }}
+                    options={{ fields: ["formatted_address", "geometry"] }}
+                  >
+                    <Input
+                      {...form.register("direccionCarga")}
+                      placeholder="¿Dónde recogemos?"
+                    />
+                  </Autocomplete>
+                </div>
               </div>
 
               <div className="space-y-2">
                 <label className="text-sm font-medium">Dirección de Entrega</label>
-                <Autocomplete
-                  onLoad={(autocomplete) => {
-                    autocomplete.addListener("place_changed", () => {
-                      const place = autocomplete.getPlace();
-                      if (place.geometry?.location) {
-                        form.setValue("latitudEntrega", place.geometry.location.lat().toString());
-                        form.setValue("longitudEntrega", place.geometry.location.lng().toString());
-                        form.setValue("direccionEntrega", place.formatted_address || "");
+                <div className="relative">
+                  <Autocomplete
+                    onLoad={(autocomplete) => {
+                      autocomplete.addListener("place_changed", () => {
+                        const place = autocomplete.getPlace();
+                        if (place.geometry?.location) {
+                          form.setValue("latitudEntrega", place.geometry.location.lat().toString());
+                          form.setValue("longitudEntrega", place.geometry.location.lng().toString());
+                          form.setValue("direccionEntrega", place.formatted_address || "");
 
-                        if (form.getValues("direccionCarga")) {
-                          calcularPrecioFinal(
-                            form.getValues("direccionCarga"),
-                            place.formatted_address || "",
-                            form.getValues("tipoServicio")
-                          );
+                          if (form.getValues("direccionCarga")) {
+                            calcularPrecioFinal(
+                              form.getValues("direccionCarga"),
+                              place.formatted_address || "",
+                              form.getValues("tipoServicio")
+                            );
+                          }
                         }
-                      }
-                    });
-                  }}
-                >
-                  <Input
-                    {...form.register("direccionEntrega")}
-                    placeholder="¿Dónde entregamos?"
-                  />
-                </Autocomplete>
+                      });
+                    }}
+                    options={{ fields: ["formatted_address", "geometry"] }}
+                  >
+                    <Input
+                      {...form.register("direccionEntrega")}
+                      placeholder="¿Dónde entregamos?"
+                    />
+                  </Autocomplete>
+                </div>
               </div>
             </div>
 
