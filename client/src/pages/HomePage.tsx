@@ -12,7 +12,7 @@ import { useState } from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
 import { useLoadScript, Autocomplete } from "@react-google-maps/api";
 
-const libraries = ["places"];
+const libraries: ("places" | "geometry" | "drawing")[] = ["places"];
 
 export default function HomePage() {
   const { toast } = useToast();
@@ -21,9 +21,9 @@ export default function HomePage() {
   const [showConfirmDialog, setShowConfirmDialog] = useState(false);
   const [formData, setFormData] = useState<InsertService | null>(null);
 
-  const { isLoaded } = useLoadScript({
+  const { isLoaded, loadError } = useLoadScript({
     googleMapsApiKey: import.meta.env.VITE_GOOGLE_MAPS_API_KEY || "",
-    libraries: libraries as any,
+    libraries: libraries,
   });
 
   const form = useForm<InsertService>({
@@ -56,9 +56,8 @@ export default function HomePage() {
   const calcularPrecioFinal = async (direccionCarga: string, direccionEntrega: string, tipoServicio: string) => {
     if (!isLoaded) return;
 
-    const service = new google.maps.DistanceMatrixService();
-
     try {
+      const service = new google.maps.DistanceMatrixService();
       const result = await service.getDistanceMatrix({
         origins: [direccionCarga],
         destinations: [direccionEntrega],
@@ -133,7 +132,35 @@ export default function HomePage() {
     }
   };
 
-  if (!isLoaded) return <div>Cargando...</div>;
+  if (loadError) {
+    return (
+      <div className="container mx-auto px-4 py-8">
+        <Card className="p-6 bg-card">
+          <div className="text-center text-red-500">
+            <h2 className="text-xl font-bold mb-2">Error al cargar Google Maps</h2>
+            <p>Por favor, verifica que la API key sea correcta y que los servicios necesarios estén habilitados en la Google Cloud Console:</p>
+            <ul className="list-disc list-inside mt-2">
+              <li>Maps JavaScript API</li>
+              <li>Places API</li>
+              <li>Distance Matrix API</li>
+            </ul>
+          </div>
+        </Card>
+      </div>
+    );
+  }
+
+  if (!isLoaded) {
+    return (
+      <div className="container mx-auto px-4 py-8">
+        <Card className="p-6 bg-card">
+          <div className="text-center">
+            <p className="text-lg">Cargando Google Maps...</p>
+          </div>
+        </Card>
+      </div>
+    );
+  }
 
   return (
     <div className="container mx-auto px-4 py-8">
