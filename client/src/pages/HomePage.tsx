@@ -11,6 +11,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { useState } from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
 import { useLoadScript, Autocomplete } from "@react-google-maps/api";
+import { nanoid } from 'nanoid';
 
 const libraries: ("places" | "geometry" | "drawing")[] = ["places"];
 
@@ -98,7 +99,8 @@ export default function HomePage() {
   };
 
   const handleSubmit = async (data: InsertService) => {
-    setFormData(data);
+    const codigoSeguimiento = nanoid(10);
+    setFormData({ ...data, codigoSeguimiento });
     setShowConfirmDialog(true);
   };
 
@@ -109,14 +111,32 @@ export default function HomePage() {
       const response = await fetch("/api/services", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(formData),
+        body: JSON.stringify({
+          ...formData,
+          codigoSeguimiento: formData.codigoSeguimiento,
+        }),
       });
 
       if (!response.ok) throw new Error("Error al enviar la solicitud");
 
+      const trackingUrl = `${window.location.origin}/tracking?code=${formData.codigoSeguimiento}`;
+
       toast({
         title: "¡Solicitud enviada!",
-        description: "Pronto nos pondremos en contacto contigo.",
+        description: (
+          <div className="mt-2">
+            <p>Pronto nos pondremos en contacto contigo.</p>
+            <p className="mt-2">Puedes seguir tu servicio en:</p>
+            <a
+              href={trackingUrl}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="text-primary hover:underline break-all"
+            >
+              {trackingUrl}
+            </a>
+          </div>
+        ),
       });
 
       setShowConfirmDialog(false);

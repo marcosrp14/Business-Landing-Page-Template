@@ -18,6 +18,7 @@ export type User = typeof users.$inferSelect;
 
 export const services = pgTable("services", {
   id: serial("id").primaryKey(),
+  codigoSeguimiento: text("codigo_seguimiento").notNull().unique(),
   tipoServicio: text("tipo_servicio").notNull(), // moto_cadete, utilitario_paqueteria, pickup_flete
   nombreCliente: text("nombre_cliente").notNull(),
   apellidoCliente: text("apellido_cliente").notNull(),
@@ -31,11 +32,21 @@ export const services = pgTable("services", {
   longitudEntrega: decimal("longitud_entrega", { precision: 10, scale: 6 }).notNull(),
   precioEstimado: decimal("precio_estimado", { precision: 10, scale: 2 }).notNull(),
   fechaSolicitud: timestamp("fecha_solicitud").defaultNow().notNull(),
+  estado: text("estado").notNull().default("pendiente"), // pendiente, en_progreso, completado, cancelado
+  // Coordenadas actuales del vehículo para seguimiento en tiempo real
+  latitudActual: decimal("latitud_actual", { precision: 10, scale: 6 }),
+  longitudActual: decimal("longitud_actual", { precision: 10, scale: 6 }),
+  ultimaActualizacion: timestamp("ultima_actualizacion"),
 });
 
 export const insertServiceSchema = createInsertSchema(services).omit({
   id: true,
-  fechaSolicitud: true
+  fechaSolicitud: true,
+  estado: true,
+  codigoSeguimiento: true,
+  latitudActual: true,
+  longitudActual: true,
+  ultimaActualizacion: true
 });
 
 // Esquema extendido para validación del formulario
