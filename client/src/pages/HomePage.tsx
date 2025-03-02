@@ -132,8 +132,7 @@ export default function HomePage() {
   };
 
   const handleSubmit = async (data: InsertService) => {
-    const codigoSeguimiento = nanoid(10);
-    setFormData({ ...data, codigoSeguimiento });
+    setFormData(data);
     setShowConfirmDialog(true);
   };
 
@@ -153,6 +152,10 @@ export default function HomePage() {
 
       const data = await response.json();
       const trackingUrl = `${window.location.origin}/tracking?code=${data.codigoSeguimiento}`;
+
+      // Generar mensaje para WhatsApp
+      const mensaje = `¡Hola! He solicitado un servicio de transporte con el código de seguimiento: ${data.codigoSeguimiento}. Tipo de servicio: ${formData.tipoServicio}. Dirección de recogida: ${formData.direccionCarga}. Dirección de entrega: ${formData.direccionEntrega}`;
+      const whatsappUrl = `https://wa.me/5493413820991?text=${encodeURIComponent(mensaje)}`;
 
       toast({
         title: "¡Solicitud enviada!",
@@ -176,6 +179,9 @@ export default function HomePage() {
       form.reset();
       setPrecioEstimado(null);
       setDistancia(null);
+
+      // Redirigir a WhatsApp
+      window.location.href = whatsappUrl;
     } catch (error) {
       toast({
         title: "Error",
