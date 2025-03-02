@@ -8,7 +8,7 @@ import { Card } from "@/components/ui/card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { serviceFormSchema, type InsertService } from "@shared/schema";
 import { Textarea } from "@/components/ui/textarea";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
 import { useLoadScript, Autocomplete } from "@react-google-maps/api";
 import { nanoid } from 'nanoid';
@@ -21,11 +21,37 @@ export default function HomePage() {
   const [distancia, setDistancia] = useState<number | null>(null);
   const [showConfirmDialog, setShowConfirmDialog] = useState(false);
   const [formData, setFormData] = useState<InsertService | null>(null);
+  const [mapsError, setMapsError] = useState<string | null>(null);
+
+  const apiKey = import.meta.env.VITE_GOOGLE_MAPS_API_KEY;
+
+  useEffect(() => {
+    if (!apiKey) {
+      setMapsError("No se ha configurado la API key de Google Maps");
+    }
+  }, [apiKey]);
 
   const { isLoaded, loadError } = useLoadScript({
-    googleMapsApiKey: import.meta.env.VITE_GOOGLE_MAPS_API_KEY || "",
+    googleMapsApiKey: apiKey || "",
     libraries: libraries,
   });
+
+  // Log error details for debugging
+  useEffect(() => {
+    if (loadError) {
+      console.error("Error al cargar Google Maps:", loadError);
+      const errorMessage = loadError.toString();
+      if (errorMessage.includes("InvalidKeyMapError")) {
+        setMapsError("La API key de Google Maps no es válida o tiene restricciones");
+      } else if (errorMessage.includes("RefererNotAllowedMapError")) {
+        setMapsError("El dominio actual no está autorizado para usar la API key");
+      } else if (errorMessage.toLowerCase().includes("google is not defined")) {
+        setMapsError("No se pudo inicializar Google Maps. Por favor, recargue la página");
+      } else {
+        setMapsError(`Error al cargar Google Maps: ${errorMessage}`);
+      }
+    }
+  }, [loadError]);
 
   const form = useForm<InsertService>({
     resolver: zodResolver(serviceFormSchema),
@@ -55,7 +81,14 @@ export default function HomePage() {
   };
 
   const calcularPrecioFinal = async (direccionCarga: string, direccionEntrega: string, tipoServicio: string) => {
-    if (!isLoaded) return;
+    if (!isLoaded || !window.google) {
+      toast({
+        title: "Error",
+        description: "El servicio de mapas no está disponible en este momento.",
+        variant: "destructive",
+      });
+      return;
+    }
 
     try {
       const service = new google.maps.DistanceMatrixService();
@@ -113,13 +146,13 @@ export default function HomePage() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           ...formData,
-          codigoSeguimiento: formData.codigoSeguimiento,
         }),
       });
 
       if (!response.ok) throw new Error("Error al enviar la solicitud");
 
-      const trackingUrl = `${window.location.origin}/tracking?code=${formData.codigoSeguimiento}`;
+      const data = await response.json();
+      const trackingUrl = `${window.location.origin}/tracking?code=${data.codigoSeguimiento}`;
 
       toast({
         title: "¡Solicitud enviada!",
@@ -152,7 +185,7 @@ export default function HomePage() {
     }
   };
 
-  if (loadError) {
+  if (loadError || mapsError) {
     return (
       <div className="container mx-auto px-4 py-8">
         <Card className="p-6 bg-card">
@@ -160,17 +193,24 @@ export default function HomePage() {
             <h2 className="text-xl font-bold mb-4">Error de Configuración</h2>
             <p className="mb-4">Lo sentimos, hay un problema con el servicio de mapas.</p>
             <div className="bg-muted p-4 rounded-lg text-left">
-              <p className="font-medium mb-2">Para solucionar este error, necesitamos:</p>
+              <p className="font-medium mb-2">Para solucionar este error:</p>
               <ul className="list-disc list-inside space-y-1">
-                <li>Verificar la API key de Google Maps</li>
-                <li>Habilitar los siguientes servicios en Google Cloud Console:
+                <li>Verifique que la API key sea correcta</li>
+                <li>Asegúrese de habilitar los siguientes servicios en Google Cloud Console:
                   <ul className="list-disc list-inside ml-4 mt-1">
                     <li>Maps JavaScript API</li>
                     <li>Places API</li>
                     <li>Distance Matrix API</li>
+                    <li>Geocoding API</li>
                   </ul>
                 </li>
+                <li>Verifique que no haya restricciones de dominio que bloqueen .replit.dev</li>
               </ul>
+              {mapsError && (
+                <div className="mt-4 p-2 bg-destructive/10 rounded">
+                  <p className="text-sm font-mono">{mapsError}</p>
+                </div>
+              )}
             </div>
           </div>
         </Card>

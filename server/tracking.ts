@@ -11,7 +11,7 @@ export function setupTrackingServer(httpServer: Server) {
 
   wss.on('connection', (ws, req) => {
     const trackingCode = new URL(req.url!, `http://${req.headers.host}`).searchParams.get('code');
-    
+
     if (!trackingCode) {
       ws.close();
       return;

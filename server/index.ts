@@ -1,6 +1,7 @@
 import express, { type Request, Response, NextFunction } from "express";
 import { registerRoutes } from "./routes";
 import { setupVite, serveStatic, log } from "./vite";
+import { setupTrackingServer } from "./tracking";
 
 const app = express();
 app.use(express.json());
@@ -37,29 +38,36 @@ app.use((req, res, next) => {
 });
 
 (async () => {
-  const server = registerRoutes(app);
+  try {
+    log("Iniciando servidor...");
+    const server = registerRoutes(app);
 
-  app.use((err: any, _req: Request, res: Response, _next: NextFunction) => {
-    const status = err.status || err.statusCode || 500;
-    const message = err.message || "Internal Server Error";
+    // Configurar el servidor WebSocket para tracking
+    log("Configurando servidor WebSocket para tracking...");
+    setupTrackingServer(server);
 
-    res.status(status).json({ message });
-    throw err;
-  });
+    app.use((err: any, _req: Request, res: Response, _next: NextFunction) => {
+      const status = err.status || err.statusCode || 500;
+      const message = err.message || "Internal Server Error";
 
-  // importantly only setup vite in development and after
-  // setting up all the other routes so the catch-all route
-  // doesn't interfere with the other routes
-  if (app.get("env") === "development") {
-    await setupVite(app, server);
-  } else {
-    serveStatic(app);
+      log(`Error: ${status} - ${message}`);
+      res.status(status).json({ message });
+      // Removido el throw err para evitar que el servidor se detenga
+    });
+
+    if (app.get("env") === "development") {
+      await setupVite(app, server);
+    } else {
+      serveStatic(app);
+    }
+
+    const PORT = 5000;
+    server.listen(PORT, "0.0.0.0", () => {
+      log(`Servidor iniciado y escuchando en el puerto ${PORT}`);
+      log(`WebSocket server disponible en ws://0.0.0.0:${PORT}/ws`);
+    });
+  } catch (error) {
+    log(`Error fatal al iniciar el servidor: ${error}`);
+    process.exit(1);
   }
-
-  // ALWAYS serve the app on port 5000
-  // this serves both the API and the client
-  const PORT = 5000;
-  server.listen(PORT, "0.0.0.0", () => {
-    log(`serving on port ${PORT}`);
-  });
 })();
