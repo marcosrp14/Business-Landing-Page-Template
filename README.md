@@ -29,8 +29,8 @@ Este proyecto es una aplicación web que permite a los usuarios enviar informaci
 1. Clona el repositorio:
 
 ```bash
-git clone https://github.com/tu-usuario/nombre-repo.git
-cd nombre-repo
+git clone https://github.com/tu-usuario/micargaex.git
+cd micargaex
 ```
 
 2. Instala las dependencias:
