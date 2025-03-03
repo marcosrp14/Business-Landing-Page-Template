@@ -29,7 +29,7 @@ Este proyecto es una aplicación web que permite a los usuarios enviar informaci
 1. Clona el repositorio:
 
 ```bash
-git clone https://github.com/tu-usuario/micargaex.git
+git clone https://github.com/TU-NOMBRE-DE-USUARIO/micargaex.git
 cd micargaex
 ```
 
