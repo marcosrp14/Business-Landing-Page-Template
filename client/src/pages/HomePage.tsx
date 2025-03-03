@@ -181,7 +181,9 @@ export default function HomePage() {
       setDistancia(null);
 
       // Redirigir a WhatsApp
-      window.location.href = whatsappUrl;
+      setTimeout(() => {
+        window.open(whatsappUrl, '_blank');
+      }, 1000);
     } catch (error) {
       toast({
         title: "Error",
