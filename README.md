@@ -1,7 +1,9 @@
 
-# Aplicación de Tracking y WhatsApp
+# MiCargaEx - Aplicación de Tracking y WhatsApp
 
-Este proyecto es una aplicación web que permite a los usuarios enviar información a través de un formulario y luego redireccionar a WhatsApp para continuar la comunicación.
+## Descripción
+
+MiCargaEx es una aplicación web que permite a los usuarios enviar información a través de un formulario y luego redireccionar a WhatsApp para continuar la comunicación. Ideal para empresas de logística y envíos que desean ofrecer seguimiento de servicios a sus clientes.
 
 ## Características
 
@@ -10,6 +12,7 @@ Este proyecto es una aplicación web que permite a los usuarios enviar informaci
 - Seguimiento de servicios mediante código de seguimiento
 - Interfaz moderna y responsiva con Tailwind CSS
 - Backend con Express y Drizzle ORM
+- Base de datos PostgreSQL
 
 ## Tecnologías utilizadas
 
@@ -17,12 +20,13 @@ Este proyecto es una aplicación web que permite a los usuarios enviar informaci
 - **Backend**: Node.js, Express
 - **Base de datos**: PostgreSQL (via NeonDB)
 - **ORM**: Drizzle
-- **Otras**: React Hook Form, React Query, WebSockets
+- **Otras**: React Hook Form, React Query, WebSockets, Google Maps API
 
 ## Requisitos previos
 
 - Node.js (versión 18 o superior)
 - NPM o Yarn
+- Cuenta en NeonDB o servicio similar de PostgreSQL
 
 ## Instalación
 
@@ -41,7 +45,19 @@ npm install
 
 ## Configuración
 
-Configura las variables de entorno necesarias para la conexión a la base de datos y otras configuraciones.
+1. Crea un archivo `.env` en la raíz del proyecto con las siguientes variables:
+
+```
+DATABASE_URL=postgresql://usuario:contraseña@host:puerto/nombre_base_datos
+SESSION_SECRET=tu_secreto_de_sesion
+GOOGLE_MAPS_API_KEY=tu_clave_api_de_google_maps
+```
+
+2. Ejecuta las migraciones de la base de datos:
+
+```bash
+npm run db:push
+```
 
 ## Desarrollo
 
@@ -71,8 +87,14 @@ npm run start
 
 ## Estructura del proyecto
 
-- `/client`: Código del frontend
+- `/client`: Código del frontend (React, TypeScript)
+  - `/src/components`: Componentes reutilizables
+  - `/src/pages`: Páginas de la aplicación
+  - `/src/hooks`: Custom hooks
 - `/server`: API y lógica del backend
+  - `/routes.ts`: Definición de rutas de la API
+  - `/db.ts`: Configuración de la base de datos
+  - `/tracking.ts`: Lógica para el seguimiento de envíos
 - `/shared`: Esquemas y tipos compartidos entre frontend y backend
 
 ## Uso
@@ -84,8 +106,20 @@ npm run start
 
 ## Contribución
 
-Las contribuciones son bienvenidas. Por favor, abre un issue primero para discutir lo que te gustaría cambiar o mejorar.
+1. Fork el repositorio
+2. Crea una rama para tu funcionalidad (`git checkout -b feature/nueva-funcionalidad`)
+3. Realiza tus cambios y haz commit (`git commit -m 'Agrega nueva funcionalidad'`)
+4. Push a la rama (`git push origin feature/nueva-funcionalidad`)
+5. Abre un Pull Request
 
 ## Licencia
 
 [MIT](LICENSE)
+
+## Contacto
+
+Para consultas, problemas o sugerencias, abre un issue en el repositorio de GitHub.
+
+---
+
+Desarrollado con ❤️ en MiCargaEx
